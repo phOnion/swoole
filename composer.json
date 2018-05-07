@@ -9,7 +9,7 @@
     },
     "require": {
         "php": "^7.2",
-        "ext-swoole": "App server for swoole",
+        "ext-swoole": "*",
         "roave/security-advisories": "dev-master",
         "onion/interfaces": "^2.0",
         "onion/framework": "^2.0",
