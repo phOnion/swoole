@@ -59,7 +59,8 @@ class SwooleApplication implements ApplicationInterface
                 }
                 $response->end($result->getBody());
             } catch (\Throwable $exception) {
-                error_log("[ERROR] {$exception->getMessage()} {$exception->getFile()}:{$exception->getLine()}");
+                $ex = get_class($exception);
+                error_log("[ERROR] {$ex}: {$exception->getMessage()} {$exception->getFile()}:{$exception->getLine()}");
 
                 $response->status(500);
                 $response->header('Content-Type', 'text/plain; charset=utf-8');
