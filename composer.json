@@ -1,0 +1,21 @@
+{
+    "name": "onion/swoole",
+    "description": "Compatibility package for Swoole support of Onion applications",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Onion\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^7.2",
+        "ext-swoole": "App server for swoole",
+        "roave/security-advisories": "dev-master",
+        "onion/interfaces": "^2.0",
+        "onion/framework": "^2.0",
+        "guzzlehttp/psr7": "^1.4"
+    },
+    "require-dev": {
+        "lawoole/swoole": "dev-master"
+    }
+}
