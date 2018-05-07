@@ -52,6 +52,11 @@ Note that we assume that you have something similar to the following in your `in
 
 // Bootstrap
 
+/**
+ * Note the usage of the ApplicationInterface to fetch the application instance,
+ * this (or your equivalent) key should be changed to return the SwooleApplication
+ * instance
+ */
 $container->get(\Onion\Framework\Application\Interfaces\ApplicationInterface::class)
     ->run(); // Note the ServerRequest::fromGlobals() is not necessary here, so it can be omitted
 ```
