@@ -5,7 +5,7 @@ use Onion\Framework\Dependency\Interfaces\FactoryInterface;
 use Psr\Container\ContainerInterface;
 use Swoole\Http\Server;
 
-final class HttpFactory implements FactoryInterface
+final class HttpServerFactory implements FactoryInterface
 {
     public function build(ContainerInterface $container): Server
     {
