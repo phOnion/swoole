@@ -15,11 +15,13 @@ class Manager
 
     public function push(Task $task)
     {
-        @$this->server->task(
-            \Swoole\Serialize::pack([
-                'name' => $task->getName(),
-                'payload' => $task->getPayload()
-            ], 1),
+        $payload = \Swoole\Serialize::pack([
+            'name' => $task->getName(),
+            'payload' => $task->getPayload(),
+        ], 1);
+
+        $this->server->task(
+            $payload,
             -1,
             function (Server $server, $source, $data) use ($task) {
                 call_user_func($task->getCallback(), \Swoole\Serialize::unpack($data), $task->getName());
@@ -29,10 +31,11 @@ class Manager
 
     public function await(Task $task, float $timeout = 1)
     {
-        return @$this->server->taskwait(\Swoole\Serialize::pack([
+        $payload = \Swoole\Serialize::pack([
             'name' => $task->getName(),
             'payload' => $task->getPayload()
-        ], 1), (double) $timeout);
+        ], 1);
+        return $this->server->taskwait($payload, (double) $timeout);
     }
 
     public function parallel(array $tasks, float $timeout = 10)
@@ -46,16 +49,11 @@ class Manager
                 'name' => $task->getName(),
                 'payload' => $task->getPayload()
             ], 1);
-            $results["{$task->getName()}:{$idx}"] = false;
+            $results[$task->getName()] = false;
         }
-        $result = @$this->server->taskWaitMulti($normalized, (double) $timeout);
+        $result = $this->server->taskWaitMulti($normalized, (double) $timeout);
         foreach ($result as $index => $value) {
-            if (!isset($tasks[$index])) {
-                "Key: $index????";
-                continue;
-            }
-            $key = "{$tasks[$index]->getName()}:{$index}";
-            $results[$key] = $value;
+            $results[$tasks[$index]->getName()] = $value;
         }
 
         return $results;
