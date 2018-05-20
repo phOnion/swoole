@@ -9,20 +9,17 @@ final class HttpServerFactory implements FactoryInterface
 {
     public function build(ContainerInterface $container): Server
     {
-        $port = 0;
         $type = $container->has('application.server.type') ?
             $container->get('application.server.type') : SWOOLE_TCP;
 
-        if ($container->has('port')) {
-            $defaultAddress = in_array($type, [SWOOLE_UDP6, SWOOLE_TCP6]) ? '::1' : '127.0.0.1';
+        $defaultAddress = in_array($type, [SWOOLE_UDP6, SWOOLE_TCP6]) ? '::1' : '127.0.0.1';
 
-            $port = $container->get('application.server.port');
-            $address = $container->has('application.server.address') ?
-                $container->get('application.server.address') : $defaultAddress;
-        }
+        $address = $container->has('application.server.address') ?
+            $container->get('application.server.address') : $defaultAddress;
+        $port = $container->has('application.server.port') ?
+            $container->get('application.server.port') : $this->getRandomPort($address);
 
         if ($container->has('application.server.sock')) {
-            $defaultAddress = sys_get_temp_dir() . '/swoole-app.sock';
             $address = $container->get('application.server.sock');
             $port = 0;
         }
@@ -40,9 +37,7 @@ final class HttpServerFactory implements FactoryInterface
         while (true) {
             $port = mt_rand(1025, 65000);
             $fp = @fsockopen($address, $port, $errno, $errstr, 0.1);
-            if ($fp) {
-                fclose($fp);
-                $fp = null;
+            if (!$fp) {
                 break;
             }
         }
