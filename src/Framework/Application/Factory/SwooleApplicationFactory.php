@@ -6,7 +6,7 @@ use Onion\Framework\Application\SwooleApplication;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
 use Psr\Container\ContainerInterface;
 use Onion\Framework\Application\Application;
-use Swoole\Http\Server;
+use Swoole\Server;
 
 final class SwooleApplicationFactory implements FactoryInterface
 {
