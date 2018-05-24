@@ -28,6 +28,11 @@ class SwooleApplication implements ApplicationInterface
     {
         $app = $this->requestHandler;
 
+        // Prevent errors if task workers are set, but no callback is defined
+        $this->server->on('finish', $this->server->onFinish ?? function () {
+        });
+        $this->server->on('task', $this->server->onTask ?? function () {
+        });
         $this->server->on('start', function (Server $server) use ($app) {
             echo "Starting application server on {$server->host}:{$server->port}" . PHP_EOL;
         });
@@ -48,7 +53,6 @@ class SwooleApplication implements ApplicationInterface
                 $request = $request->withHeader($header, $line);
             }
 
-            echo "Received request {$request->getMethod()} {$request->getUri()}" . PHP_EOL;
             try {
                 /** @var ResponseInterface $result */
                 $result = $app->handle($request);
@@ -59,9 +63,6 @@ class SwooleApplication implements ApplicationInterface
                 }
                 $response->end($result->getBody());
             } catch (\Throwable $exception) {
-                $ex = get_class($exception);
-                error_log("[ERROR] {$ex}: {$exception->getMessage()} {$exception->getFile()}:{$exception->getLine()}");
-
                 $response->status(500);
                 $response->header('Content-Type', 'text/plain; charset=utf-8');
                 $response->end('Unexpected Server Error');
