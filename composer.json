@@ -13,7 +13,8 @@
         "roave/security-advisories": "dev-master",
         "onion/interfaces": "^2.0",
         "onion/framework": "^2.0",
-        "guzzlehttp/psr7": "^1.4"
+        "guzzlehttp/psr7": "^1.4",
+        "psr/log": "^1.0"
     },
     "require-dev": {
         "lawoole/swoole": "dev-master"
