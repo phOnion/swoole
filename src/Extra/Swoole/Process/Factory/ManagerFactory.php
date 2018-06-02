@@ -6,6 +6,7 @@ use Onion\Extra\Swoole\Process\Process;
 use Onion\Extra\Swoole\Process\ProcessOptions;
 use Onion\Extra\Swoole\Process\WorkerInterface;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
+use Onion\Framework\Log\VoidLogger;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 
@@ -34,9 +35,9 @@ class ManagerFactory implements FactoryInterface
                 $unit,
                 $options
             );
-            if ($container->has(LoggerInterface::class)) {
-                $process->setLogger($container->get(LoggerInterface::class));
-            }
+            $logger = $container->has(\Psr\Log\LoggerInterface::class) ?
+                $container->get(\Psr\Log\LoggerInterface::class) : new VoidLogger;
+            $process->setLogger($logger);
 
             $channel = new \Swoole\Channel(($worker['buffer'] ?? 1024) * 1024);
             $manager->create($process, $worker['count'] ?? 1, $channel);
