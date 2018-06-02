@@ -32,6 +32,7 @@ class SwooleApplication implements ApplicationInterface
         $this->server->on('finish', $this->server->onFinish ?? function () {
         });
         $this->server->on('task', $this->server->onTask ?? function () {
+            echo 'No task workers registered';
         });
         $this->server->on('start', function (Server $server) use ($app) {
             echo "Starting application server on {$server->host}:{$server->port}" . PHP_EOL;
@@ -73,7 +74,7 @@ class SwooleApplication implements ApplicationInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        throw new \BadMethodCallException(
+        throw new \LogicException(
             'Should not be used as request handle'
         );
     }
