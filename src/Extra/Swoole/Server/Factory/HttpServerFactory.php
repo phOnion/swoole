@@ -26,6 +26,11 @@ final class HttpServerFactory implements FactoryInterface
 
         $options = $container->has('application.server.options') ?
             $container->get('application.server.options') : [];
+
+        if (isset($options['ssl_cert_file']) && defined('SWOOLE_SSL')) {
+            $type = $type | SWOOLE_SSL;
+        }
+
         $server = new \Swoole\Http\Server($address, $port, SWOOLE_PROCESS, $type);
         $server->set($options);
 
