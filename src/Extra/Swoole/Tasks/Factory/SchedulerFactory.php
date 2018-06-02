@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 namespace Onion\Extra\Swoole\Tasks\Factory;
 
-use Onion\Framework\Dependency\Interfaces\FactoryInterface;
+use Onion\Extra\Swoole\Tasks\Interfaces\ManagerInterface;
 use Onion\Extra\Swoole\Tasks\Scheduler;
-use Onion\Extra\Swoole\Tasks\WorkerInterface;
+use Onion\Framework\Dependency\Interfaces\FactoryInterface;
 use Swoole\Server;
 
 class SchedulerFactory implements FactoryInterface
@@ -13,6 +13,6 @@ class SchedulerFactory implements FactoryInterface
         /** @var Server $server */
         $server = $container->get(Server::class);
 
-        return new Scheduler($server);
+        return new Scheduler($server, $container->get(ManagerInterface::class));
     }
 }

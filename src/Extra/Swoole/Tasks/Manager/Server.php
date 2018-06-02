@@ -1,34 +1,44 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Tasks;
+namespace Onion\Extra\Swoole\Tasks\Manager;
 
-use Swoole\Server;
+use Swoole\Server as Swoole;
+use Onion\Extra\Swoole\Tasks\Interfaces\ManagerInterface;
 
-class Manager
+class Server implements ManagerInterface
 {
     /** @var Server */
     private $server;
 
+    /**
+     * @param \Swoole\Server $server The server which will run the tasks
+     */
     public function __construct($server)
     {
         $this->server = $server;
     }
 
+    /**
+     * Push a task to the server
+     */
     public function push(Task $task)
     {
-        $payload = \Swoole\Serialize::pack([
-            'name' => $task->getName(),
-            'payload' => $task->getPayload(),
-        ], 1);
+        $payload = \Swoole\Serialize::pack($task, 1);
 
         $this->server->task(
             $payload,
             -1,
-            function (Server $server, $source, $data) use ($task) {
-                call_user_func($task->getCallback(), \Swoole\Serialize::unpack($data), $task->getName());
+            function (Swoole $server, $source, $data) use ($task) {
+                call_user_func($task->getCallback(), \Swoole\Serialize::unpack($data));
             }
         );
     }
 
+    /**
+     * Send a task to the workers and wait for the result until $timeout
+     * is reached.
+     *
+     * @return bool|mixed The result of the task if success or false on timeout
+     */
     public function await(Task $task, float $timeout = 1)
     {
         $payload = \Swoole\Serialize::pack([
@@ -38,7 +48,14 @@ class Manager
         return $this->server->taskwait($payload, (double) $timeout);
     }
 
-    public function parallel(array $tasks, float $timeout = 10)
+    /**
+     * Simultaneously send n+1 tasks to the server and wait $timeout
+     * for their response. The results of the response are ordered in
+     * the exact order at which they are provided, of a task does not
+     * complete in time it's result will be false
+     *
+     */
+    public function parallel(array $tasks, float $timeout = 10): array
     {
         $normalized = [];
         $results = [];
