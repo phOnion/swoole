@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace Onion\Extra\Swoole\Process;
 
-use Onion\Extra\Swoole\Process\WorkerInterface as TaskWorker;
+use Onion\Extra\Swoole\Tasks\WorkerInterface as TaskWorker;
 
 interface WorkerInterface extends TaskWorker
 {
