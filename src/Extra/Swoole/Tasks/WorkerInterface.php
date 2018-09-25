@@ -1,5 +1,5 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Process;
+namespace Onion\Extra\Swoole\Tasks;
 
 interface WorkerInterface
 {
