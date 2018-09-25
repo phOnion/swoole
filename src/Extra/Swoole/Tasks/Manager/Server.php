@@ -1,8 +1,9 @@
 <?php declare(strict_types=1);
 namespace Onion\Extra\Swoole\Tasks\Manager;
 
-use Swoole\Server as Swoole;
 use Onion\Extra\Swoole\Tasks\Interfaces\ManagerInterface;
+use Onion\Extra\Swoole\Tasks\Task;
+use Swoole\Server as Swoole;
 
 class Server implements ManagerInterface
 {
@@ -20,15 +21,15 @@ class Server implements ManagerInterface
     /**
      * Push a task to the server
      */
-    public function push(Task $task)
+    public function push(Task $task): bool
     {
         $payload = \Swoole\Serialize::pack($task, 1);
 
-        $this->server->task(
+        return (bool) $this->server->task(
             $payload,
             -1,
             function (Swoole $server, $source, $data) use ($task) {
-                call_user_func($task->getCallback(), \Swoole\Serialize::unpack($data));
+                call_user_func($task->getCallback(), $server, \Swoole\Serialize::unpack($data));
             }
         );
     }
