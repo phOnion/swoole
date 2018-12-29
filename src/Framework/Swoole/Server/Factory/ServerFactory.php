@@ -1,10 +1,11 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Server\Factory;
+namespace Onion\Framework\Swoole\Server\Factory;
 
+use Onion\Framework\Console\Console;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
 use Psr\Container\ContainerInterface;
 use Swoole\Server;
-use Swoole\Lock;
+use Onion\Framework\Console\Buffer;
 
 final class ServerFactory implements FactoryInterface
 {
@@ -16,10 +17,12 @@ final class ServerFactory implements FactoryInterface
             define(SWOOLE_SSL, 0);
         }
 
+        $console = new Console(new Buffer('php://stdout'));
+
         $servers = $container->get('application.server.addresses');
 
         $class = $container->get('application.type');
-        $port = $this->getRandomPort(self::DEFAULT_INTERFACE);
+        $port = $this->getRandomPort();
 
         $options = $container->has('application.server.options') ?
             $container->get('application.server.options') : [];
@@ -31,10 +34,12 @@ final class ServerFactory implements FactoryInterface
             $container->has('application.server.mode') ? $container->get('application.server.mode') : SWOOLE_BASE,
             isset($options['ssl_cert_file']) ? SWOOLE_TCP | SWOOLE_SSL : SWOOLE_TCP
         );
-        echo 'Instantiated internal listener @ ' . self::DEFAULT_INTERFACE . ":{$port}" . PHP_EOL;
+        $console->writeLine(
+            '%text:cyan%Instantiated internal listener @ %text:green%' . self::DEFAULT_INTERFACE . ":{$port}"
+        );
 
         foreach ($servers as $config) {
-            $server->addListener($config['address'], $config['port'], $config['type']);
+            $server->addListener($config['address'], $config['port'], $config['type'] ?? SWOOLE_TCP);
         }
 
         $server->set($options);
@@ -54,7 +59,7 @@ final class ServerFactory implements FactoryInterface
         return $server;
     }
 
-    private function getRandomPort($address): int
+    private function getRandomPort(): int
     {
         $used = [];
         while (true) {
@@ -63,8 +68,9 @@ final class ServerFactory implements FactoryInterface
                 continue;
             }
 
-            $fp = @fsockopen($address, $port, $errno, $errstr, 0.1);
-            if (!$fp) {
+            $fp = @socket_create_listen($port, 32);
+            if (is_resource($fp)) {
+                socket_close($fp);
                 break;
             }
             $used[] = $port;

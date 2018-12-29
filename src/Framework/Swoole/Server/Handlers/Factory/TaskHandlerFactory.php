@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Server\Handlers\Factory;
+namespace Onion\Framework\Swoole\Server\Handlers\Factory;
 
-use Onion\Extra\Swoole\Server\Handlers\TaskHandler;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
-
+use Onion\Framework\Swoole\Server\Handlers\TaskHandler;
+use Onion\Framework\Swoole\Tasks\WorkerInterface;
 
 class TaskHandlerFactory implements FactoryInterface
 {

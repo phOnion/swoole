@@ -1,6 +1,8 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Server\Handlers;
+namespace Onion\Framework\Swoole\Server\Handlers;
 
+use Onion\Framework\Console\Buffer;
+use Onion\Framework\Console\Console;
 use Swoole\Server;
 
 class StartHandler
@@ -14,7 +16,9 @@ class StartHandler
         SWOOLE_SOCK_UNIX_STREAM => 'unix_stream',
     ];
 
+    /** @var array $servers */
     private $servers = [];
+    /** @var string $pidFile */
     private $pidFile;
 
     public function __construct(array $applicationServerAddresses, string $pidFile)
@@ -25,18 +29,17 @@ class StartHandler
 
     public function __invoke(Server $server)
     {
-        echo "Listening on: " . PHP_EOL;
+        $console = new Console(new Buffer('php://stdout'));
+        $console->writeLine('%text:cyan%Listening on:');
         file_put_contents($this->pidFile, (int) $server->master_pid);
 
         foreach($this->servers as $serv) {
-            $type = self::SERVER_TYPES[$serv['type']] ??
-                $serv['type'];
             $schema = 'http';
 
-            switch ($serv['type']) {
+            switch ($serv['type'] ?? SWOOLE_TCP) {
                 case SWOOLE_SOCK_UNIX_DGRAM:
                 case SWOOLE_SOCK_UNIX_STREAM:
-                    echo "\t - file://{$serv['address']}";
+                    $console->writeLine("\t %text:green%file://{$serv['address']}");
                     break;
                 case SWOOLE_TCP | SWOOLE_SSL:
                 case SWOOLE_TCP6 | SWOOLE_SSL:
@@ -47,10 +50,10 @@ class StartHandler
                 case SWOOLE_TCP6:
                 case SWOOLE_UDP:
                 case SWOOLE_UDP6:
-                    echo "\t - {$schema}://{$serv['address']}:{$serv['port']}" . PHP_EOL;
+                    $console->writeLine("\t %text:green%{$schema}://{$serv['address']}:{$serv['port']}");
                     break;
                 default:
-                    echo "\t - {$serv['address']}:{$serv['port']}" . PHP_EOL;
+                    $console->writeLine("\t %text:green%{$serv['address']}:{$serv['port']}");
                     break;
             }
         }

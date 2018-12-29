@@ -1,5 +1,5 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Server\Handlers;
+namespace Onion\Framework\Swoole\Server\Handlers;
 
 use GuzzleHttp\Psr7\ServerRequest;
 use Onion\Framework\Application\Application;
@@ -9,7 +9,9 @@ use Swoole\Http\Response;
 
 class RequestHandler
 {
+    /** @var Application $application */
     private $application;
+
     public function __construct(Application $application)
     {
         $this->application = $application;

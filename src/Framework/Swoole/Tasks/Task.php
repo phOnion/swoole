@@ -1,9 +1,13 @@
 <?php declare(strict_types=1);
-namespace Onion\Extra\Swoole\Tasks;
+namespace Onion\Framework\Swoole\Tasks;
 
 class Task
 {
+    /** @var string $name */
     private $name;
+    /** @var callable|null $callback */
+    private $callback;
+    /** @var mixed $payload */
     private $payload = null;
 
     /**
@@ -16,7 +20,7 @@ class Task
      * on itself while it is required when used with Task\Scheduler
      *
      * @param string $name An alias of the task
-     * @param string
+     * @param callable $callback Callback to execute on task completion
      */
     public function __construct(string $name, callable $callback = null)
     {
@@ -34,6 +38,7 @@ class Task
 
     /**
      * Set the payload to pass when executing the task
+     * @param mixed $payload
      */
     public function withPayload($payload): void
     {
@@ -42,6 +47,8 @@ class Task
 
     /**
      * Retrieve the payload of the task
+     *
+     * @return mixed
      */
     public function getPayload()
     {
@@ -61,7 +68,7 @@ class Task
      */
     public function getCallback(): callable
     {
-        return $this->callback  ?? function () {
+        return $this->callback ?? function (): void {
             // Nothing to do
         };
     }
