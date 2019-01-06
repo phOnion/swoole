@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 namespace Onion\Framework\Swoole\Tasks\Factory;
 
-use Onion\Framework\Swoole\Tasks\Manager;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
+use Onion\Framework\Swoole\Tasks\Manager;
 use Swoole\Server as Swoole;
 
 class ManagerFactory implements FactoryInterface
