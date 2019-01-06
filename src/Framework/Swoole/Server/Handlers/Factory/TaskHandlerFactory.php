@@ -11,11 +11,7 @@ class TaskHandlerFactory implements FactoryInterface
     {
         $workers = [];
         foreach ($container->get('workers') as $name => $worker) {
-            assert(
-                isset($worker['class']),
-                new \InvalidArgumentException("Missing 'class' field for worker definition")
-            );
-            $unit = $container->get($worker['class']);
+            $unit = $container->get($worker);
             assert(
                 $unit instanceof WorkerInterface,
                 new \InvalidArgumentException("Worker must implement WorkerInterface")
