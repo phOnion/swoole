@@ -1,6 +1,7 @@
 <?php declare(strict_types=1);
 namespace Onion\Framework\Swoole\Server\Handlers;
 
+use function GuzzleHttp\Promise\queue;
 use GuzzleHttp\Psr7\ServerRequest;
 use Onion\Framework\Application\Application;
 use Psr\Http\Message\ResponseInterface;
@@ -44,5 +45,9 @@ class RequestHandler
             $response->header('Content-Type', 'text/plain; charset=utf-8');
             $response->end("Unexpected Server Error\n{$exception->getMessage()}:{$exception->getTraceAsString()}");
         }
+
+        go(function () {
+            queue()->run();
+        });
     }
 }
