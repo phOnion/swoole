@@ -16,24 +16,21 @@ class TaskHandler
         $this->workers = $workers;
     }
 
-    public function __invoke(Server $server, int $task, int $source, string $data)
+    public function __invoke(Server $server, int $task, int $source, $data)
     {
-        /** @var Task $task */
-        $task = \Swoole\Serialize::unpack($data);
-        $name = $task->getName();
+        /** @var Task $data */
+        $name = $data->getName();
 
         if (!isset($this->workers[$name])) {
             throw new \UnexpectedValueException("No task worker registered for '{$name}");
         }
 
         try {
-            $result = $this->workers[$name]->run($task->getPayload());
+            $result = $this->workers[$name]->run($data->getPayload());
         } catch (\Throwable $ex) {
             $result = $ex;
         }
 
-        $server->finish(\Swoole\Serialize::pack($result, 1));
-
-        return;
+        $server->finish($result);
     }
 }
