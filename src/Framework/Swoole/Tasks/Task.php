@@ -5,27 +5,13 @@ class Task
 {
     /** @var string $name */
     private $name;
-    /** @var callable|null $callback */
-    private $callback;
     /** @var mixed $payload */
     private $payload = null;
 
-    /**
-     * Create a task class that will be sent to a server
-     * for execution.
-     *
-     * The last argument is optional since a task does not need to have
-     * a callback when used in combination with the Task\Manager as then
-     * it might purely serve as a message to a worker, rather than a task
-     * on itself while it is required when used with Task\Scheduler
-     *
-     * @param string $name An alias of the task
-     * @param callable $callback Callback to execute on task completion
-     */
-    public function __construct(string $name, callable $callback = null)
+    public function __construct(string $name, array $payload = [])
     {
         $this->name = $name;
-        $this->callback = $callback;
+        $this->payload = $payload;
     }
 
     /**
@@ -40,9 +26,11 @@ class Task
      * Set the payload to pass when executing the task
      * @param mixed $payload
      */
-    public function withPayload($payload): void
+    public function withPayload($payload): self
     {
         $this->payload = $payload;
+
+        return $this;
     }
 
     /**
@@ -53,23 +41,5 @@ class Task
     public function getPayload()
     {
         return $this->payload;
-    }
-
-    /**
-     * Set an additional callback to execute after the process is finished
-     */
-    public function withCallback(callable $callback): void
-    {
-        $this->callback = $callback;
-    }
-
-    /**
-     * Retrieve the callback to execute
-     */
-    public function getCallback(): callable
-    {
-        return $this->callback ?? function (): void {
-            // Nothing to do
-        };
     }
 }
