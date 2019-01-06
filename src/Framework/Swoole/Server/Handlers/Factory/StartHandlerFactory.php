@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 namespace Onion\Framework\Swoole\Server\Handlers\Factory;
 
-use Onion\Framework\Swoole\Server\Handlers\StartHandler;
 use Onion\Framework\Dependency\Interfaces\FactoryInterface;
+use Onion\Framework\Swoole\Server\Handlers\StartHandler;
 
 class StartHandlerFactory implements FactoryInterface
 {
