@@ -1,7 +1,13 @@
 <?php declare(strict_types=1);
 namespace Onion\Framework\Swoole\Tasks;
 
+use function GuzzleHttp\Promise\all;
+use function GuzzleHttp\Promise\each;
+use function GuzzleHttp\Promise\promise_for;
+use function GuzzleHttp\Promise\rejection_for;
+use function GuzzleHttp\Promise\task;
 use GuzzleHttp\Promise\Promise;
+use GuzzleHttp\Promise\PromiseInterface;
 use Onion\Framework\Swoole\Tasks\Interfaces\ManagerInterface;
 use Onion\Framework\Swoole\Tasks\Task;
 use Swoole\Server as Swoole;
@@ -20,45 +26,35 @@ class Manager implements ManagerInterface
     }
 
     /**
-     * Push a task to the server
+     * Push an async task to the queue. Returns a promise that will
+     * resolve if the scheduling
+     *
+     * @return PromiseInterface
      */
-    public function async(Task $task): Promise
+    public function async(Task $task): PromiseInterface
     {
-        $payload = \Swoole\Serialize::pack($task, 1);
-        $promise = new Promise();
+        return task(function () use ($task) {
+            $result = $this->server->task($task, -1, function (Swoole $server, $worker, $result) {});
 
-        $this->server->task(
-            $payload,
-            -1,
-            function (Swoole $server, $source, $data) use (&$promise, $task) {
-                $result = \Swoole\Serialize::unpack($data);
-
-                if ($result instanceof \Throwable) {
-                    $promise->reject($data);
-                    return;
-                }
-
-                $promise->resolve($data);
-            }
-        );
-
-        return $promise;
+            return $result !== false ? promise_for(true) : rejection_for(false);
+        });
     }
 
-    public function sync(Task $task, int $timeout = 1): Promise
+    public function sync(Task $task, int $timeout = 1): PromiseInterface
     {
-        $payload = \Swoole\Serialize::pack($task, 1);
-        $promise = new Promise(function () use (&$promise, $payload, $timeout) {
-            $result = $this->server->taskwait($payload, (float) ($interval * 1000));
-            if (!$result) {
-                return $promise->reject($result);
+        return task(function () use ($task, $timeout) {
+            $result = $this->server->taskwait($task, (float) $timeout);
+
+            if ($result === false) {
+                $result = new \RuntimeException('Task failed');
             }
 
-            $promise->resolve($result);
+            if ($result instanceof \Throwable) {
+                return rejection_for($result);
+            }
+
+            return promise_for($result);
         });
-
-
-        return $promise;
     }
 
     /**
@@ -68,70 +64,76 @@ class Manager implements ManagerInterface
      * complete in time it's result will be false
      *
      */
-    public function parallel(array $tasks, int $timeout = 10): Promise
+    public function parallel(array $tasks, int $timeout = 10000): PromiseInterface
     {
-        $normalized = [];
-
-
-        foreach ($tasks as $idx => $task) {
-            /** @var Task $task */
-            $normalized[] = \Swoole\Serialize::pack($task, 1);
-        }
-
-        $promise = new Promise(function () use (&$promise, $normalized, $timeout): void {
-            $result = $this->server->taskWaitMulti($normalized, (float) ($timeout * 1000));
-
-            foreach ($result as $value) {
-                $individualPromise = clone $promise;
-                if (!$value) {
-                    $individualPromise->reject($value);
-                    continue;
-                }
-
-                $individualPromise->resolve($value);
+        return task(function () use ($tasks, $timeout) {
+            $results = $this->server->taskWaitMulti($tasks, (float) $timeout);
+            if ($results === false) {
+                return rejection_for($results);
             }
 
-            $promise->cancel();
-        });
+            $results = array_map(function ($result) {
+                // $result = unserialize($result);
+                if (!$result || $result instanceof \Throwable) {
+                    return rejection_for($result);
+                }
 
-        return $promise;
-    }
+                return promise_for($result);
+            }, $results);
 
-    public function schedule(Task $task, int $interval): Promise
-    {
-        $promise = null;
-        $timer = $this->server->tick((float) ($interval * 1000), function () use (&$promise, $task) {
-            $this->push($task)->then(function ($value) use ($promise) {
-                $promise->resolve($value);
-            }, function ($value) use ($promise) {
-                $promise->reject($value);
+            return each($results)->then(function () use ($results, $tasks) {
+                $result = [];
+                $keys = array_keys($tasks);
+                foreach ($results as $index => $promise) {
+                    $result[$keys[$index]] = $promise;
+                }
+
+                return array_values($result);
             });
         });
-
-        $promise = new Promise(function () use (&$promise) {
-            $promise->reject();
-        }, function () use ($timer) {
-            $this->server->clearTimer($timer);
-        });
-
-        return $promise;
     }
 
-    public function delay(Task $task, int $interval): Promise
+    public function all(array $tasks, ?int $timeout = null): PromiseInterface
     {
-        $promise = null;
-        $timer = $this->server->tick((float) ($interval * 1000), function () use (&$promise, $task) {
-            $this->push($task)->then(function ($value) use ($promise) {
-                $promise->resolve($value);
-            }, function ($value) use ($promise) {
-                $promise->reject($value);
+        return $this->parallel($tasks, $timeout)
+            ->then(function (array $tasks) {
+                return all($tasks);
             });
-        });
+    }
 
+    public function race(array $tasks, ?int $timeout = null): PromiseInterface
+    {
+        return $this->parallel($tasks, $timeout)
+            ->then(function ($result) {
+                return array_shift($result);
+            })->otherwise(function ($reason) {
+                return array_shift($reason);
+            });
+    }
+
+    public function schedule(Task $task, int $interval): PromiseInterface
+    {
+        $timer = null;
         $promise = new Promise(function () {}, function () use ($timer) {
             $this->server->clearTimer($timer);
         });
 
+        $timer = $this->server->tick($interval, function () use ($task) {
+            return $this->sync($task)->wait();
+        });
+
         return $promise;
+    }
+
+    public function delay(Task $task, int $interval): PromiseInterface
+    {
+        $times = null;
+        $promise = new Promise(null, function () use (&$timer) {
+            $this->server->clearTimer($timer);
+        });
+
+        $timer = $this->server->after($interval, function () use ($task) {
+            $this->async($task);
+        });
     }
 }
