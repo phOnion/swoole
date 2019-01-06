@@ -29,6 +29,10 @@ class StartHandler
 
     public function __invoke(Server $server)
     {
+        if (class_exists(\Swoole\Runtime::class) && method_exists(\Swoole\Runtime::class, 'enableCoroutine')) {
+            \Swoole\Runtime::enableCoroutine(true);
+        }
+
         $console = new Console(new Buffer('php://stdout'));
         $console->writeLine('%text:cyan%Listening on:');
         file_put_contents($this->pidFile, (int) $server->master_pid);
