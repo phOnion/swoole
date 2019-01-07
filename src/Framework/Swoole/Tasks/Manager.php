@@ -11,6 +11,7 @@ use GuzzleHttp\Promise\PromiseInterface;
 use Onion\Framework\Swoole\Tasks\Interfaces\ManagerInterface;
 use Onion\Framework\Swoole\Tasks\Task;
 use Swoole\Server as Swoole;
+use function GuzzleHttp\Promise\queue;
 
 class Manager implements ManagerInterface
 {
@@ -27,7 +28,13 @@ class Manager implements ManagerInterface
 
     /**
      * Push an async task to the queue. Returns a promise that will
-     * resolve if the scheduling
+     * resolve if the task has been scheduled successfully, but does
+     * not guarantee completion.
+     *
+     * Calling `wait` on the returned promise will manually trigger
+     * a tick and also does not guarantee if the task has been completed
+     *
+     * @var Task $task
      *
      * @return PromiseInterface
      */
@@ -40,6 +47,15 @@ class Manager implements ManagerInterface
         });
     }
 
+    /**
+     * Pushes a synchronous task to the queue, which will be triggered
+     * whenever the next tick occurs, either during the request or at
+     * the end of the current request AFTER sending the response to the
+     * client.
+     *
+     * Calling `wait` on the returned promise will block the thread
+     * until all pending promises are processed.
+     */
     public function sync(Task $task, int $timeout = 1): PromiseInterface
     {
         return task(function () use ($task, $timeout) {
@@ -63,6 +79,10 @@ class Manager implements ManagerInterface
      * the exact order at which they are provided, of a task does not
      * complete in time it's result will be false
      *
+     * @param Task[] $tasks
+     * @param int $timeout The timeout after which the promises will be rejected
+     *
+     * @return PromiseInterface
      */
     public function parallel(array $tasks, int $timeout = 10000): PromiseInterface
     {
@@ -83,17 +103,26 @@ class Manager implements ManagerInterface
 
             return each($results)->then(function () use ($results, $tasks) {
                 $result = [];
-                $keys = array_keys($tasks);
                 foreach ($results as $index => $promise) {
-                    $result[$keys[$index]] = $promise;
+                    $result[$index] = $promise;
                 }
 
-                return array_values($result);
+                return $result;
             });
         });
     }
 
-    public function all(array $tasks, ?int $timeout = null): PromiseInterface
+    /**
+     * Sends multiple tasks to the queue at the same time and waits for
+     * $timeout before automatically rejecting. If any of the tasks fail
+     * this promise will be rejected
+     *
+     * @param Task[] $tasks The tasks to run
+     * @param int $timeout The timeout of the tasks in ms
+     *
+     * @return PromiseInterface
+     */
+    public function all(array $tasks, int $timeout = 60000): PromiseInterface
     {
         return $this->parallel($tasks, $timeout)
             ->then(function (array $tasks) {
@@ -101,16 +130,47 @@ class Manager implements ManagerInterface
             });
     }
 
-    public function race(array $tasks, ?int $timeout = null): PromiseInterface
+    /**
+     * Fire multiple tasks at the same time, whenever 1 finishes its result
+     * will be the resolution or rejection of the returned promise.
+     *
+     * @param Task[] $tasks
+     * @param int $timeout The timeout of the tasks in ms
+     */
+    public function race(array $tasks, int $timeout = 60000): PromiseInterface
     {
-        return $this->parallel($tasks, $timeout)
-            ->then(function ($result) {
-                return array_shift($result);
-            })->otherwise(function ($reason) {
-                return array_shift($reason);
-            });
+        return task(function () use ($tasks, $timeout) {
+            $completed = false;
+            $promise = new Promise();
+
+            foreach ($tasks as $task) {
+                go(function () use (&$completed, $promise, $task, $timeout) {
+                    $this->sync($task, $timeout)->then(function ($value) use (&$completed, $promise) {
+                        if (!$completed) {
+                            $promise->resolve($value);
+                            $completed = true;
+                        }
+                    })->otherwise(function ($reason) use (&$completed, $promise) {
+                        if (!$completed) {
+                            $promise->reject($reason);
+                            $completed = true;
+                        }
+                    });
+                });
+            }
+
+            return $promise;
+        });
     }
 
+    /**
+     * Schedule a task to be executed every $interval in ms
+     *
+     * @param Task $task
+     * @param int $interval The interval in ms after which to send the task
+     *
+     * @return PromiseInterface
+     */
     public function schedule(Task $task, int $interval): PromiseInterface
     {
         $timer = null;
@@ -125,6 +185,14 @@ class Manager implements ManagerInterface
         return $promise;
     }
 
+    /**
+     * Send a delayed, will be sent after $interval in MS
+     *
+     * @param Task $task
+     * @param int $interval Interval after which to send the task
+     *
+     * @return PromiseInterface
+     */
     public function delay(Task $task, int $interval): PromiseInterface
     {
         $times = null;
@@ -135,5 +203,7 @@ class Manager implements ManagerInterface
         $timer = $this->server->after($interval, function () use ($task) {
             $this->async($task);
         });
+
+        return $promise;
     }
 }
