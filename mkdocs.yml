@@ -1,0 +1,6 @@
+site_name: Onion Framework - Swoole
+pages:
+  - Intro: index.md
+  - Tutorial: get-started.md
+  - Task Workers: tasks.md
+theme: readthedocs
