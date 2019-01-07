@@ -44,10 +44,10 @@ class RequestHandler
             $response->status(500);
             $response->header('Content-Type', 'text/plain; charset=utf-8');
             $response->end("Unexpected Server Error\n{$exception->getMessage()}:{$exception->getTraceAsString()}");
+        } finally {
+            go(function () {
+                queue()->run();
+            });
         }
-
-        go(function () {
-            queue()->run();
-        });
     }
 }
