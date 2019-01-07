@@ -27,7 +27,7 @@ class TaskHandler
 
         try {
             $result = $this->workers[$name]->run($data->getPayload());
-        } catch (\Throwable $ex) {
+        } catch (\Exception $ex) {
             $result = $ex;
         }
 
